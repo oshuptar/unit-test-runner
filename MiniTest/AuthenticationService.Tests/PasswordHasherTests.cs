@@ -1,4 +1,5 @@
-﻿using MiniTest;
+﻿
+using MiniTest;
 
 namespace AuthenticationService.Tests;
 

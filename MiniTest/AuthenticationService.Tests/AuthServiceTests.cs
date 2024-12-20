@@ -1,5 +1,5 @@
-using MiniTest;
 using Moq;
+using MiniTest;
 
 namespace AuthenticationService.Tests;
 

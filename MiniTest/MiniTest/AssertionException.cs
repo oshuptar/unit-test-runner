@@ -6,8 +6,5 @@ using System.Threading.Tasks;
 
 namespace MiniTest;
 
-[AttributeUsage(AttributeTargets.Method)]
-public class BeforeEachAttribute : Attribute
-{
+public class AssertionException(string message) : Exception(message);
 
-}
