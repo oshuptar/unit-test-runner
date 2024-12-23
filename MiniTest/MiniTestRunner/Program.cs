@@ -10,7 +10,7 @@ namespace MiniTestRunner;
 internal class Program
 {
 
-    private static Type GetAttributeTypeByName(string attributeName, Assembly referencedAssembly)
+    private static Type GetAttributeTypeByName(string attributeName, Assembly referencedAssembly) //helper method to extract the type of the attribute given its name
     {
         return referencedAssembly.GetTypes().Where(type => type.Name.Equals(attributeName)).Single();
     }
@@ -26,7 +26,7 @@ internal class Program
         }
     }
 
-    private static void LoadReferencedAssemblies(Assembly assembly, AssemblyLoadContext loadContext, string baseDirectory)
+    private static void LoadReferencedAssemblies(Assembly assembly, AssemblyLoadContext loadContext, string baseDirectory) //helper method to resolve dependencies
     {
         foreach (var referencedAssemblyName in assembly.GetReferencedAssemblies())
         {
@@ -48,7 +48,7 @@ internal class Program
             }
 
 
-            AssemblyLoadContext loadContext = new AssemblyLoadContext("loadContext", isCollectible: true);
+            AssemblyLoadContext loadContext = new AssemblyLoadContext("loadContext", isCollectible: true); // creating my own load context
             Assembly assembly = loadContext.LoadFromAssemblyPath(path);
 
             Console.WriteLine(assembly.FullName);
@@ -56,8 +56,8 @@ internal class Program
             string baseDirectory = Path.GetDirectoryName(path);
             LoadReferencedAssemblies(assembly, loadContext, baseDirectory); // Loads dependencies
 
-            Assembly referencedAssembly = AppDomain.CurrentDomain.GetAssemblies().Where(assemblies => assemblies.GetName().Name.Equals("MiniTest")).Single();
-         
+            Assembly referencedAssembly = AppDomain.CurrentDomain.GetAssemblies().Where(assemblies => assemblies.GetName().Name.Equals("MiniTest")).Single(); // extract the assembly of MiniTest library
+
             Type testClassAttribute = GetAttributeTypeByName("TestClassAttribute", referencedAssembly);
             Type[] types = assembly.GetTypes().Where(t => t.IsClass && t.IsDefined(testClassAttribute)).ToArray(); //retrieves test classes
 
@@ -71,25 +71,25 @@ internal class Program
 
                 Console.WriteLine($"Running tests from class {type.Name}");
 
-                ConstructorInfo? parameterlessConstructor = type.GetConstructor(Type.EmptyTypes);
+                ConstructorInfo? parameterlessConstructor = type.GetConstructor(Type.EmptyTypes); // Check for a parameterless constructor
                 if (parameterlessConstructor is null)
                 {
                     Console.ForegroundColor = ConsoleColor.Yellow;
                     Console.WriteLine($"Warning: No parameterless constructor found for {type.FullName}");
                     Console.ResetColor();
-                    continue;
+                    continue; // if not defined - continue
                 }
 
                 object instance = parameterlessConstructor.Invoke(null);
 
                 var beforeEachMethod = type.GetMethods().Where(t => t.IsPublic &&
-                t.IsDefined(GetAttributeTypeByName("BeforeEachAttribute", referencedAssembly))).SingleOrDefault();
+                t.IsDefined(GetAttributeTypeByName("BeforeEachAttribute", referencedAssembly))).SingleOrDefault(); //Extracts the method with beforeEach attribute
                 var afterEachMethod = type.GetMethods().Where(t => t.IsPublic
-                && t.IsDefined(GetAttributeTypeByName("AfterEachAttribute", referencedAssembly))).SingleOrDefault();
+                && t.IsDefined(GetAttributeTypeByName("AfterEachAttribute", referencedAssembly))).SingleOrDefault(); // Extracts the method with afterEach attribute
 
                 if (beforeEachMethod != null)
                 {
-                    Action beforeEachAction = (Action)Delegate.CreateDelegate(typeof(Action), instance, beforeEachMethod);
+                    Action beforeEachAction = (Action)Delegate.CreateDelegate(typeof(Action), instance, beforeEachMethod); // binding a method to a delegate
                     beforeEachAction?.Invoke();
                 }
                 else
@@ -99,50 +99,49 @@ internal class Program
                     Console.ResetColor();
                 }
 
-                Type dataRowAttributeType = GetAttributeTypeByName("DataRowAttribute", referencedAssembly);
-                Type priorityAttribute = GetAttributeTypeByName("PriorityAttribute", referencedAssembly);
+                Type dataRowAttributeType = GetAttributeTypeByName("DataRowAttribute", referencedAssembly); // Retrieves the type of the attribute
+                Type priorityAttribute = GetAttributeTypeByName("PriorityAttribute", referencedAssembly); // Retrieves the type of the attribute
 
                 var testMethods = type.GetMethods().Where(t => t.IsPublic
-                && t.IsDefined(GetAttributeTypeByName("TestMethodAttribute", referencedAssembly)));
+                && t.IsDefined(GetAttributeTypeByName("TestMethodAttribute", referencedAssembly))); // Extracting methods with TestMethod attribute
 
-                List<KeyValuePair> priorityMethods = new List<KeyValuePair>();
+                List<KeyValuePair> priorityMethods = new List<KeyValuePair>(); // Used to store elements with their priorities
 
                 foreach (var testMethod in testMethods)
                 {
-                    Attribute? attr = testMethod.GetCustomAttribute(priorityAttribute);
+                    Attribute? attr = testMethod.GetCustomAttribute(priorityAttribute); // Retrieves the instance of Attribute of type PriorityAttribute
                     if (attr is null)
                     {
-                        priorityMethods.Add(new KeyValuePair(0, testMethod));
+                        priorityMethods.Add(new KeyValuePair(0, testMethod)); // assigns 0 in case the attribute is not specified
                     }
                     else
                     {
-                        int priority = (int)attr.GetType().GetProperty("Priority").GetValue(attr);
+                        int priority = (int)attr.GetType().GetProperty("Priority").GetValue(attr); // Retrieves priority of the attribute
                         KeyValuePair priorityMethod = new KeyValuePair(priority, testMethod);
                         priorityMethods.Add(priorityMethod);
                     }
                 }
 
-                IEnumerable<KeyValuePair> collection = priorityMethods;
-                collection.OrderBy(t => t.Key).ThenBy(t => t.Value.Name);
+                IEnumerable<KeyValuePair> collection = priorityMethods.OrderBy(t => t.Key).ThenBy(t => t.Value.Name); // Sorts methods by priority value and Name
                 foreach (var pair in collection)
                 {
                     bool failed = false;
+                    var method = pair.Value; // retrieves a specific method to be executed
 
-                    var method = pair.Value;
                     ParameterInfo[] methodParameters = method.GetParameters();
-                    IEnumerable<Attribute> dataRowAttributes = method.GetCustomAttributes().Where(attr => attr.GetType().Equals(dataRowAttributeType));
+                    IEnumerable<Attribute> dataRowAttributes = method.GetCustomAttributes().Where(attr => attr.GetType().Equals(dataRowAttributeType)); // retrieves all DataRow Attributes
                     foreach (var dataRowAttribute in dataRowAttributes)
                     {
-                        PropertyInfo? dataProperty = dataRowAttribute.GetType().GetProperty("Data");
+                        PropertyInfo? dataProperty = dataRowAttribute.GetType().GetProperty("Data"); // Retrives the value of the property data
                         if (dataProperty is null)
                             continue;
 
                         ParameterInfo[] attributeParameters = dataProperty.GetIndexParameters();
-                        if (methodParameters.Length != attributeParameters.Length)
+                        if (methodParameters.Length != attributeParameters.Length) // Parameter match checking
                             continue;
 
                         bool match = true;
-                        for (int i = 0; i < attributeParameters.Length; i++)
+                        for (int i = 0; i < attributeParameters.Length; i++) // Parameter match checking
                         {
                             if (methodParameters[i].ParameterType != attributeParameters[i].ParameterType)
                             {
@@ -158,7 +157,7 @@ internal class Program
                             Console.ResetColor();
                             continue;
                         }
-                        try
+                        try // Call of the method with exception handling
                         {
                             if (attributeParameters.Length == 0)
                                 method.Invoke(instance, null);
