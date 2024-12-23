@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Data;
+using MiniTest;
 
 namespace MiniTestRunner;
 
@@ -32,12 +33,18 @@ internal class Program
             string referencedAssemblyPath = Path.Combine(baseDirectory, $"{referencedAssemblyName.Name}.dll");
             if (File.Exists(referencedAssemblyPath))
             {
-                Assembly reference = loadContext.LoadFromAssemblyPath(referencedAssemblyPath);
-                LoadReferencedAssemblies(reference, loadContext, baseDirectory);
+                AssemblyName name = AssemblyName.GetAssemblyName(referencedAssemblyPath);
+                Assembly? assemblyInExistingContext = AssemblyLoadContext.Default
+                    .Assemblies.FirstOrDefault(a => a.FullName == name.FullName);
+
+                if (assemblyInExistingContext is null)
+                {
+                    Assembly reference = loadContext.LoadFromAssemblyPath(referencedAssemblyPath);
+                    LoadReferencedAssemblies(reference, loadContext, baseDirectory);
+                }
             }
         }
     }
-
     static void Main(string[] args)
     {
         foreach (var path in args)
@@ -46,8 +53,6 @@ internal class Program
             {
                 throw new FileNotFoundException();
             }
-
-
             AssemblyLoadContext loadContext = new AssemblyLoadContext("loadContext", isCollectible: true); // creating my own load context
             Assembly assembly = loadContext.LoadFromAssemblyPath(path);
 
@@ -131,15 +136,15 @@ internal class Program
                     Console.WriteLine($"{method.Name} - {description?.GetType().GetProperty("Description")?.GetValue(description)?.ToString() ?? "No Description provided"} ");
 
                     ParameterInfo[] methodParameters = method.GetParameters();
-                    IEnumerable<Attribute> dataRowAttributes = method.GetCustomAttributes().Where(attr => Attribute.IsDefined(method, dataRowAttributeType)); // retrieves all DataRow Attributes
-                    if (dataRowAttributes.ToArray().Length == 0)
+                    List<DataRowAttribute> dataRowAttributes = method.GetCustomAttributes<DataRowAttribute>().ToList(); // retrieves all DataRow Attributes
+                    if (dataRowAttributes.Count == 0)
                     {
                         Console.WriteLine("No data row parameters");
                         try
                         {
                             method.Invoke(instance, null);
                         }
-                        catch (Exception ex)
+                        catch (TargetInvocationException ex)
                         {
                             failed = true;
                             no_of_failed++;
@@ -159,39 +164,21 @@ internal class Program
 
                     foreach (var dataRowAttribute in dataRowAttributes)
                     {
-                        Console.WriteLine("Entered datarow attribute");
-
                         failed = false;
-                        PropertyInfo? dataProperty = dataRowAttribute.GetType().GetProperty("Data"); // Retrives the value of the property data
-                        if (dataProperty is null)
-                        {
-                            continue;
-                        }
+                        //PropertyInfo? dataProperty = dataRowAttribute.GetType().GetProperty("Data"); // Retrives the value of the property data
+                        //PropertyInfo? descriptionProperty = dataRowAttribute.GetType().GetProperty("Description");
+
+                        //if (dataProperty is null)
+                        //{
+                        //    continue;
+                        //}
 
                         bool match = true;
-                        //ParameterInfo[] attributeParameters = dataProperty.
-                        object[]? attributeParameters = dataProperty.GetValue(dataRowAttribute) as object[];
-                        if (attributeParameters is null)
+                        object?[] data = dataRowAttribute.Data;
+                        if (methodParameters.Length != data.Length)// Parameter match checking
                         {
-                            Console.WriteLine("Cast failure");
-                            continue;
+                            match = false;
                         }
-
-                        Console.WriteLine($"Parameters length - {attributeParameters.Length}");
-
-
-                        //if (methodParameters.Length != attributeParameters.Length)// Parameter match checking
-                        //{
-                        //    match = false;
-                        //}
-                        //for (int i = 0; i < attributeParameters.Length; i++) // Parameter match checking
-                        //{
-                        //    if () 
-                        //    {
-                        //        match = false;
-                        //        break;
-                        //    }
-                        //}
 
                         if (!match)
                         {
@@ -203,33 +190,34 @@ internal class Program
 
                         try // Call of the method with exception handling
                         {
-                            if (attributeParameters.Length == 0)
+                            if (data.Length == 0)
                                 method.Invoke(instance, null);
                             else
                             {
-                                //var dataRowValue = dataProperty.GetValue(dataRowAttribute);
-                                //object[] paramValues = new object[attributeParameters.Length];
-                                //dataProperty.GetValue(dataRowAttribute, paramValues);
-                                //method.Invoke(instance, paramValues);
-
-                                method.Invoke(instance, attributeParameters);
-
+                                method.Invoke(instance, data);
                             }
                         }
-                        catch (Exception ex)
+                        catch (TargetInvocationException ex)
                         {
                             failed = true;
                             no_of_failed++;
                             Console.ForegroundColor = ConsoleColor.Red;
-                            Console.WriteLine($"{method.Name} - {dataProperty.GetValue(dataRowAttribute)}: FAILED\n  {ex.Message}");
+                            Console.WriteLine($"{method.Name} - {dataRowAttribute.Description}: FAILED\n  {ex.Message}");
                             Console.ResetColor();
+                        }
+                        catch(ArgumentException)
+                        {
+                            Console.ForegroundColor = ConsoleColor.Yellow;
+                            Console.WriteLine($"Warning : Parameter mismatch for {method.Name}");
+                            Console.ResetColor();
+                            continue;
                         }
 
                         if (!failed)
                         {
                             no_of_passed++;
                             Console.ForegroundColor = ConsoleColor.Green;
-                            Console.WriteLine($"{method.Name} : PASSED");
+                            Console.WriteLine($"{method.Name} - {dataRowAttribute.Description}: PASSED");
                             Console.ResetColor();
                         }
                     }
