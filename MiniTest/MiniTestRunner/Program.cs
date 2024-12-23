@@ -165,28 +165,20 @@ internal class Program
                     foreach (var dataRowAttribute in dataRowAttributes)
                     {
                         failed = false;
-                        //PropertyInfo? dataProperty = dataRowAttribute.GetType().GetProperty("Data"); // Retrives the value of the property data
-                        //PropertyInfo? descriptionProperty = dataRowAttribute.GetType().GetProperty("Description");
-
-                        //if (dataProperty is null)
-                        //{
-                        //    continue;
-                        //}
-
                         bool match = true;
                         object?[] data = dataRowAttribute.Data;
-                        if (methodParameters.Length != data.Length)// Parameter match checking
-                        {
-                            match = false;
-                        }
+                        //if (methodParameters.Length != data.Length)// Parameter match checking
+                        //{
+                        //    match = false;
+                        //}
 
-                        if (!match)
-                        {
-                            Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"Warning : Parameter mismatch for {method.Name}");
-                            Console.ResetColor();
-                            continue;
-                        }
+                        //if (!match)
+                        //{
+                        //    Console.ForegroundColor = ConsoleColor.Yellow;
+                        //    Console.WriteLine($"Warning : Parameter mismatch for {method.Name} - {data} - {dataRowAttribute.Description}");
+                        //    Console.ResetColor();
+                        //    continue;
+                        //}
 
                         try // Call of the method with exception handling
                         {
@@ -208,7 +200,7 @@ internal class Program
                         catch(ArgumentException)
                         {
                             Console.ForegroundColor = ConsoleColor.Yellow;
-                            Console.WriteLine($"Warning : Parameter mismatch for {method.Name}");
+                            Console.WriteLine($"Warning : Parameter mismatch for {method.Name} - {dataRowAttribute.Description}");
                             Console.ResetColor();
                             continue;
                         }
