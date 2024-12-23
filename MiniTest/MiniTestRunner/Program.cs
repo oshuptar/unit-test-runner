@@ -171,12 +171,15 @@ internal class Program
                         bool match = true;
                         //ParameterInfo[] attributeParameters = dataProperty.
                         object[]? attributeParameters = dataProperty.GetValue(dataRowAttribute) as object[];
-                        if(attributeParameters is null)
+                        if (attributeParameters is null)
                         {
                             Console.WriteLine("Cast failure");
                             continue;
                         }
-                        
+
+                        Console.WriteLine($"Parameters length - {attributeParameters.Length}");
+
+
                         //if (methodParameters.Length != attributeParameters.Length)// Parameter match checking
                         //{
                         //    match = false;
