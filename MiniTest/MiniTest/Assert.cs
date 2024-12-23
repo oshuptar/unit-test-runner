@@ -20,8 +20,12 @@ public static class Assert
         }
         catch (Exception ex)
         {
-            string exceptionMessage = String.Format($"Expected exception type:<{typeof(TException)}>. Actual exception type:<{ex.GetType()}>. {message}");
-            throw new AssertionException(exceptionMessage);
+            thrown = true;
+            if (ex.GetType() != typeof(TException))
+            {
+                string exceptionMessage = String.Format($"Expected exception type:<{typeof(TException)}>. Actual exception type:<{ex.GetType()}>. {message}");
+                throw new AssertionException(exceptionMessage);
+            }
         }
         if (!thrown)
         {
@@ -40,26 +44,43 @@ public static class Assert
                 throw new AssertionException(exceptionMessage);
             }
         }
+        if((expected is null && actual is not null) || (expected is not null && actual is null))
+        {
+            string exceptionMessage = string.Format($"Expected: {expected?.ToString() ?? "null"}. Actual: {actual?.ToString() ?? "null"}. {message}");
+            throw new AssertionException(exceptionMessage);
+        }
     }
     public static void AreNotEqual<T>(T? notExpected, T? actual, string message = "")
     {
         string excpetionMessage = String.Format($"Expected any value except: {notExpected?.ToString() ?? "null"}. Actual: {actual?.ToString() ?? "null"}. {message}");
-        throw new AssertionException(excpetionMessage);
+        if (notExpected != null && actual != null)
+        {
+            if (notExpected.Equals(actual))
+            {
+                string exceptionMessage = string.Format($"Expected: {notExpected?.ToString() ?? "null"}. Actual: {actual?.ToString() ?? "null"}. {message}");
+                throw new AssertionException(exceptionMessage);
+            }
+        }
+        if(notExpected is null && actual is null)
+        {
+            string exceptionMessage = string.Format($"Expected: {notExpected?.ToString() ?? "null"}. Actual: {actual?.ToString() ?? "null"}. {message}");
+            throw new AssertionException(exceptionMessage);
+        }
     }
 
     public static void IsTrue(bool condition, string message = "")
     {
         if (!condition)
         {
-            throw new AssertionException(message);
+            throw new AssertionException($"Expected condition is true. {message}");
         }
     }
 
     public static void IsFalse(bool condition, string message = "")
     {
-        if(condition)
+        if (condition)
         {
-            throw new AssertionException(message);
+            throw new AssertionException($"Expected condition is false. {message}");
         }
     }
 

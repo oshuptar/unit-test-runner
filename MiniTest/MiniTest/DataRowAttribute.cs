@@ -14,7 +14,7 @@ public class DataRowAttribute : Attribute
 
     public DataRowAttribute(string description, params object[] data)
     {
-        Data = data;
-        this.Description = Description;
+        this.Data = data;
+        this.Description = description;
     }
 }
